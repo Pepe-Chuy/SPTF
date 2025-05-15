@@ -10,7 +10,15 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Middleware
-app.use(cors());
+// Configuración CORS más permisiva
+app.use(cors({
+  origin: '*', // Permitir cualquier origen
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept']
+}));
+
+// Middleware para OPTIONS (preflight)
+app.options('*', cors());
 
 // Agregar middleware para loguear las solicitudes
 app.use((req, res, next) => {

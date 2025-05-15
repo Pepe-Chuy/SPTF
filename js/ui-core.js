@@ -193,7 +193,8 @@ class UICore {
         try {
             // Hacer una petición directa al servidor
             const xhr = new XMLHttpRequest();
-            xhr.open('POST', 'http://localhost:3000/api/users/login', true);
+            // Usar la URL de la API del config en lugar de hardcodear
+            xhr.open('POST', `${CONFIG.API_BASE_URL}/users/login`, true);
             xhr.setRequestHeader('Content-Type', 'application/json');
             
             xhr.onload = () => {
@@ -299,7 +300,8 @@ class UICore {
         try {
             // Hacer una petición directa al servidor
             const xhr = new XMLHttpRequest();
-            xhr.open('POST', 'http://localhost:3000/api/users/register', true);
+            // Usar la URL de la API del config en lugar de hardcodear
+            xhr.open('POST', `${CONFIG.API_BASE_URL}/users/register`, true);
             xhr.setRequestHeader('Content-Type', 'application/json');
             
             xhr.onload = () => {
