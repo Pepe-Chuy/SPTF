@@ -52,12 +52,26 @@ const CONFIG = require('./js/config.js');
 // Conexión a MongoDB Atlas
 const MONGODB_URI = process.env.MONGODB_URI || CONFIG.MONGODB_URI;
 
-mongoose.connect(MONGODB_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true
-})
-.then(() => console.log('Conectado a MongoDB'))
-.catch(err => console.error('Error al conectar a MongoDB:', err));
+// Función para conectar a MongoDB con reintentos
+const connectWithRetry = async () => {
+  console.log('Intentando conectar a MongoDB...');
+  try {
+    await mongoose.connect(MONGODB_URI, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+      serverSelectionTimeoutMS: 5000, // Timeout de 5 segundos
+      socketTimeoutMS: 45000, // Timeout de 45 segundos para operaciones
+    });
+    console.log('Conectado a MongoDB');
+  } catch (err) {
+    console.error('Error al conectar a MongoDB:', err);
+    console.log('Reintentando en 5 segundos...');
+    setTimeout(connectWithRetry, 5000);
+  }
+};
+
+// Iniciar conexión
+connectWithRetry();
 
 // Modelos
 const userSchema = new mongoose.Schema({
@@ -134,33 +148,52 @@ app.post('/api/users/register', async (req, res) => {
     
     const { name, email, password, role } = req.body;
     
+    // Validar campos obligatorios
+    if (!name || !email || !password) {
+      return res.status(400).json({ message: 'Nombre, email y contraseña son obligatorios' });
+    }
+    
+    console.log('Buscando usuario existente con email:', email);
     // Verificar si el usuario ya existe
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(400).json({ message: 'El email ya está registrado' });
+      console.log('Usuario ya existe:', email);
+      return res.status(400).json({ message: 'El usuario ya existe' });
     }
     
+    console.log('Creando nuevo usuario:', { name, email, role });
     // Crear nuevo usuario
     const newUser = new User({
       name,
       email,
-      password, // En una aplicación real, deberías hashear la contraseña
+      password, // Nota: En producción, se debería hashear la contraseña
       role: role || 'user'
     });
     
+    console.log('Guardando usuario en la base de datos...');
     await newUser.save();
+    console.log('Usuario guardado con ID:', newUser._id);
     
-    // Generar token (simulado)
-    const token = `token_${newUser._id}_${Date.now()}`;
+    // Generar token simple (en producción, usar JWT)
+    const token = `token_${newUser._id}`;
     
-    // Devolver usuario sin contraseña
+    // Devolver respuesta sin la contraseña
     const userObj = newUser.toObject();
     delete userObj.password;
     
+    console.log('Registro exitoso, enviando respuesta');
     res.status(201).json({ token, user: userObj });
   } catch (error) {
     console.error('Error al registrar usuario:', error);
-    res.status(500).json({ message: 'Error al registrar usuario' });
+    console.error('Detalles del error:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
+    res.status(500).json({ 
+      message: 'Error al registrar usuario', 
+      error: error.message 
+    });
   }
 });
 
